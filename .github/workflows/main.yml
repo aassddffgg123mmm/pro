@@ -1,0 +1,73 @@
+name: FINAL UserBot
+#لا احلل اطلاقا نسخ الكود او استخدام الطريقة للعامة بدون ذكر المصدر وساكون خصيمك يوم الدين 
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
+
+concurrency:
+  group: final-userbot
+  cancel-in-progress: false
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout main code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: تحميل الاصدار
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: تهيئة Git
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: إنشاء ملفات بيانات جديدة (بدون جلب القديمة)
+        run: |
+          echo "🆕 بدء تشغيل جديد بدون جلب البيانات القديمة"
+          echo "📁 سيتم إنشاء ملفات جلسة جديدة إذا لم تكن موجودة"
+          # إنشاء ملفات أساسية إذا لم تكن موجودة
+          touch data.db 2>/dev/null || true
+          touch config.json 2>/dev/null || true
+          echo "✅ جاهز للتشغيل ببيانات جديدة"
+
+      - name: تحميل المتطلبات
+        run: |
+          pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: متطلبات الميوزك
+        run: |          
+          sudo apt-get install -y ffmpeg
+                              
+      - name: بدء السورس
+        run: python main.py
+
+      - name: حفظ بيانات هذا التشغيل
+        if: always()
+        run: |
+          git checkout main
+          git checkout bot-final-storage 2>/dev/null || git checkout -b bot-final-storage
+          echo "main.py" >> .gitignore
+          echo "data.py" >> .gitignore
+          echo "FINAL/" >> .gitignore
+          git add --all
+          git commit -m "🤖 Auto-update bot data - $(date +'%Y-%m-%d %H:%M:%S')" || echo "ℹ️ لا توجد تغييرات للحفظ"
+          git push origin bot-final-storage --force || echo "❌ فشل رفع البيانات"
+          git checkout main
+
+      - name: تاكيد العمليات
+        run: |
+          echo "✅ العملية انتهت بنجاح"
+          echo "📦 البيانات محفوظة في فرع: bot-final-storage"
